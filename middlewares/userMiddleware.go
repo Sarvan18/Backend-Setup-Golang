@@ -141,7 +141,7 @@ func ValidateUserMiddleware() gin.HandlerFunc {
 				Error:      "Missing or invalid Authorization header",
 				StatusCode: http.StatusBadRequest,
 			}
-			c.JSON(http.StatusBadRequest, gin.H{"error": errResponse.Error})
+			c.JSON(http.StatusBadRequest, gin.H{"error": errResponse})
 			c.Abort()
 			return
 		}
@@ -159,7 +159,7 @@ func ValidateUserMiddleware() gin.HandlerFunc {
 				Error:      "JWT parsing failed or expired",
 				StatusCode: http.StatusUnauthorized,
 			}
-			c.JSON(http.StatusUnauthorized, gin.H{"error": errResponse.Error})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": errResponse})
 			c.Abort()
 			return
 		}
@@ -193,6 +193,34 @@ func ValidateUserMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		c.Next()
+	}
+}
+
+func UpdateUserMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var user user_model.User
+
+		defer c.Request.Body.Close()
+
+		if err := json.NewDecoder(c.Request.Body).Decode(&user); err != nil {
+			middlewareError, _ := json.Marshal(handleError.ErrorWithCode{
+				Error:      "Data Not Found",
+				StatusCode: http.StatusNoContent,
+			})
+			c.JSON(http.StatusNoContent, gin.H{"error": middlewareError})
+			c.Abort()
+			return
+		}
+
+		if user.Email != "" {
+			_, err := mail.ParseAddress(user.Email)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"Error": err})
+			}
+			c.Abort()
+			return
+		}
 		c.Next()
 	}
 }

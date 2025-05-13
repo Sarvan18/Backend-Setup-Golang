@@ -42,6 +42,6 @@ func ConnectDb() *mongo.Client {
 
 var Client *mongo.Client = ConnectDb()
 
-func getCollection(client mongo.Client, collectionName string) *mongo.Collection {
+func GetCollection(client mongo.Client, collectionName string) *mongo.Collection {
 	return client.Database("Backend-Setup").Collection(collectionName)
 }
