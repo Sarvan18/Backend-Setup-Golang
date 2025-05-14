@@ -13,6 +13,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -115,4 +116,124 @@ func LoginUser(email, password string) (*user_model.UserLoginToken, *handleError
 
 	return jwtRes, nil
 
+}
+
+func GetUserById(id string) (*user_model.User, *handleError.ErrorWithCode) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+
+	defer cancel()
+
+	objectId, err := primitive.ObjectIDFromHex(id)
+
+	if err != nil {
+		return nil, &handleError.ErrorWithCode{
+			Error:      err.Error(),
+			StatusCode: http.StatusUnauthorized,
+		}
+	}
+
+	filter := bson.M{"_id": objectId}
+	var user user_model.User
+	if err := users.FindOne(ctx, filter).Decode(&user); err != nil {
+		return nil, &handleError.ErrorWithCode{
+			Error:      err.Error(),
+			StatusCode: http.StatusUnauthorized,
+		}
+	}
+	return &user, nil
+}
+
+func UpdateUser(user *user_model.User, _userId string) (*user_model.User, *handleError.ErrorWithCode) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+
+	defer cancel()
+
+	objId, err := primitive.ObjectIDFromHex(_userId)
+
+	if err != nil {
+		return nil, &handleError.ErrorWithCode{
+			Error:      err.Error(),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	filter := bson.M{"_id": objId}
+
+	var updateObj bson.D
+
+	if user.Name != "" {
+		updateObj = append(updateObj, bson.E{"name", user.Name})
+	}
+	var userData *user_model.User
+
+	if err := users.FindOne(ctx, filter, nil).Decode(&userData); err != nil {
+		return nil, &handleError.ErrorWithCode{
+			Error:      err.Error(),
+			StatusCode: http.StatusUnauthorized,
+		}
+	}
+
+	if user.Email != "" {
+		count, err := users.CountDocuments(ctx, bson.M{"email": user.Email})
+
+		if err != nil {
+			return nil, &handleError.ErrorWithCode{
+				Error:      err.Error(),
+				StatusCode: http.StatusInternalServerError,
+			}
+		}
+
+		if count > 0 && userData.ID != objId {
+			return nil, &handleError.ErrorWithCode{
+				Error:      err.Error(),
+				StatusCode: http.StatusNotAcceptable,
+			}
+		}
+
+		updateObj = append(updateObj, bson.E{"email": user.Email})
+
+		userData.UpdatedAt, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
+
+		upsert := true
+
+		opt := options.UpdateOptions{
+			Upsert: &upsert,
+		}
+
+		if _, err := users.UpdateOne(ctx, filter, bson.D{{"$set", updateObj}}, &opt); err != nil {
+			return nil, &handleError.ErrorWithCode{
+				Error:      err.Error(),
+				StatusCode: http.StatusInternalServerError,
+			}
+		}
+
+	}
+	return userData, nil
+}
+
+func DeleteUser(id string) (*mongo.DeleteResult, *handleError.ErrorWithCode) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+
+	defer cancel()
+
+	objId, err := primitive.ObjectIDFromHex(id)
+
+	if err != nil {
+		return nil, &handleError.ErrorWithCode{
+			Error:      err.Error(),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	filter := bson.M{"_id": objId}
+
+	dResult, err := users.DeleteOne(ctx, filter, nil)
+
+	if err != nil {
+		return nil, &handleError.ErrorWithCode{
+			Error:      err.Error(),
+			StatusCode: http.StatusInternalServerError,
+		}
+	}
+	return dResult, nil
 }
