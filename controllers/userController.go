@@ -10,81 +10,91 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterUserHandler(c *gin.Context) {
-	res, err := user_services.RegisterUser(user_middlewares.User)
+func RegisterUserHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		res, err := user_services.RegisterUser(user_middlewares.User)
 
-	defer c.Request.Body.Close()
+		defer c.Request.Body.Close()
 
-	if err != nil {
-		c.JSON(int(err.StatusCode), gin.H{"Error": err.Error})
-		return
+		if err != nil {
+			c.JSON(int(err.StatusCode), gin.H{"Error": err.Error})
+			return
+		}
+
+		c.JSON(http.StatusOK, res)
 	}
-
-	c.JSON(http.StatusOK, res)
 }
 
-func LoginUserHandler(c *gin.Context) {
-	user_email := c.Request.FormValue("email")
-	user_password := c.Request.FormValue("password")
+func LoginUserHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user_email := c.Request.FormValue("email")
+		user_password := c.Request.FormValue("password")
 
-	defer c.Request.Body.Close()
+		defer c.Request.Body.Close()
 
-	jwt, err := user_services.LoginUser(user_email, user_password)
+		jwt, err := user_services.LoginUser(user_email, user_password)
 
-	if err != nil {
-		c.JSON(int(err.StatusCode), err.Error)
-		return
+		if err != nil {
+			c.JSON(int(err.StatusCode), err.Error)
+			return
+		}
+
+		c.JSON(http.StatusOK, jwt)
 	}
-
-	c.JSON(http.StatusOK, jwt)
 }
 
-func GetUserHandler(c *gin.Context) {
-	userId := c.Query("id")
-	user, err := user_services.GetUserById(userId)
+func GetUserHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userId := c.Query("id")
+		user, err := user_services.GetUserById(userId)
 
-	defer c.Request.Body.Close()
+		defer c.Request.Body.Close()
 
-	if err != nil {
-		c.JSON(int(err.StatusCode), err.Error)
-		return
+		if err != nil {
+			c.JSON(int(err.StatusCode), err.Error)
+			return
+
+		}
+
+		c.JSON(http.StatusOK, user)
 
 	}
-
-	c.JSON(http.StatusOK, user)
-
 }
 
-func UpdateUserHandler(c *gin.Context) {
-	var user user_model.User
+func UpdateUserHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var user user_model.User
 
-	defer c.Request.Body.Close()
+		defer c.Request.Body.Close()
 
-	if err := json.NewDecoder(c.Request.Body).Decode(&user); err != nil {
-		c.JSON(http.StatusNoContent, gin.H{"Error": "No data Found"})
-		return
+		if err := json.NewDecoder(c.Request.Body).Decode(&user); err != nil {
+			c.JSON(http.StatusNoContent, gin.H{"Error": "No data Found"})
+			return
+		}
+
+		id := c.Query("id")
+
+		res, err := user_services.UpdateUser(&user, id)
+
+		if err != nil {
+			c.JSON(int(err.StatusCode), err.Error)
+			return
+		}
+
+		c.JSON(http.StatusOK, res)
 	}
-
-	id := c.Query("id")
-
-	res, err := user_services.UpdateUser(&user, id)
-
-	if err != nil {
-		c.JSON(int(err.StatusCode), err.Error)
-		return
-	}
-
-	c.JSON(http.StatusOK, res)
 }
 
-func DeleteUserHandler(c *gin.Context) {
-	id := c.Query("id")
+func DeleteUserHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Query("id")
 
-	res, err := user_services.DeleteUser(id)
+		res, err := user_services.DeleteUser(id)
 
-	if err != nil {
-		c.JSON(int(err.StatusCode), err.Error)
+		if err != nil {
+			c.JSON(int(err.StatusCode), err.Error)
+		}
+
+		c.JSON(http.StatusOK, res)
 	}
-
-	c.JSON(http.StatusOK, res)
 }

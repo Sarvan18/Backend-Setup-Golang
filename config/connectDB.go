@@ -7,15 +7,13 @@ import (
 	"os"
 	"time"
 
+	"github.com/Sarvan18/Backend-Setup-Golang.git/golang-Backend-Setup/config/api"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func ConnectDb() *mongo.Client {
-	if err := godotenv.Load(); err != nil {
-		log.Fatal("Error Loading on ENV : %v", err)
-	}
 
 	connectionURL := os.Getenv("CONNECTION_URL_FOR_MONGO")
 
@@ -44,4 +42,19 @@ var Client *mongo.Client = ConnectDb()
 
 func GetCollection(client mongo.Client, collectionName string) *mongo.Collection {
 	return client.Database("Backend-Setup").Collection(collectionName)
+}
+
+func StartApp() {
+	if err := godotenv.Load(); err != nil {
+		log.Fatal(fmt.Printf("Error Loading on ENV : %v", err))
+	}
+
+	PORT := os.Getenv("PORT")
+
+	router := api.InitApi()
+
+	router.Run(PORT)
+
+	fmt.Printf("Server Was Running on PORT : %s", PORT)
+
 }
